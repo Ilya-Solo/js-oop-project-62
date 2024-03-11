@@ -70,3 +70,23 @@ test('test objects', () => {
     expect(schema.isValid({ name: 'ada', age: -5 })).toBe(false);
 });
 
+test('test custom validator', () => {
+    const v = new Validator();
+
+    // Add custom string validator
+    const startsWithValidator = (value, start) => value.startsWith(start);
+    v.addValidator('string', 'startWith', startsWithValidator);
+
+    const schema1 = v.string().test('startWith', 'H');
+    expect(schema1.isValid('exlet')).toBe(false);
+    expect(schema1.isValid('Hexlet')).toBe(true);
+
+    // Add custom number validator
+    const minValidator = (value, min) => value >= min;
+    v.addValidator('number', 'min', minValidator);
+
+    const schema2 = v.number().test('min', 5);
+    expect(schema2.isValid(4)).toBe(false);
+    expect(schema2.isValid(6)).toBe(true);
+});
+

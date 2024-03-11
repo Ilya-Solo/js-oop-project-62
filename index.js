@@ -3,9 +3,14 @@ class BasicValidator {
     this.validationFuncs = [];
   }
 
-  addValidator(validationFunc) {
+  addDefaultValidator(validationFunc) {
     this.validationFuncs.push(validationFunc);
     return this;
+  }
+
+  test(funcName, ...args) {
+    const cutomFunc = (val) => this.testValidationFuncs[funcName](val, ...args);
+    return this.addDefaultValidator(cutomFunc);
   }
 
   isValid(value) {
@@ -20,17 +25,17 @@ class StringValidator extends BasicValidator {
   required() {
     const requiredCheck = (val) => !!val && typeof val === 'string';
     this.requiredCalled = true;
-    return this.addValidator(requiredCheck)
+    return this.addDefaultValidator(requiredCheck)
   }
 
   contains(string) {
     const containsCheck = (val) => val.includes(string);
-    return this.addValidator(containsCheck)
+    return this.addDefaultValidator(containsCheck)
   }
 
   minLength(length) {
     const minLengthCheck = (val) => val.length >= length;
-    return this.addValidator(minLengthCheck)
+    return this.addDefaultValidator(minLengthCheck)
   }
 }
 
@@ -38,17 +43,17 @@ class NumberValidator extends BasicValidator {
   required() {
     const requiredCheck = (val) => typeof val === 'number';
     this.requiredCalled = true;
-    return this.addValidator(requiredCheck);
+    return this.addDefaultValidator(requiredCheck);
   }
 
   positive() {
     const positiveCheck = (val) => val > 0;
-    return this.addValidator(positiveCheck);
+    return this.addDefaultValidator(positiveCheck);
   }
 
   range(rangeStart, rangeEnd) {
     const rangeCheck = (val) => (val >= rangeStart && val <= rangeEnd);
-    return this.addValidator(rangeCheck)
+    return this.addDefaultValidator(rangeCheck)
   }
 }
 
@@ -56,12 +61,12 @@ class ArrayValidator extends BasicValidator {
   required() {
     const requiredCheck = (val) => Array.isArray(val);
     this.requiredCalled = true;
-    return this.addValidator(requiredCheck)
+    return this.addDefaultValidator(requiredCheck)
   }
 
   sizeof(length) {
     const sizeOfArrayCheck = (val) => val.length === length;
-    return this.addValidator(sizeOfArrayCheck)
+    return this.addDefaultValidator(sizeOfArrayCheck)
   }
 }
 
@@ -70,10 +75,9 @@ class HashValidator extends BasicValidator {
     const shapeCheck = (val) => {
       const recursiveShapeCheck = (checkedValue, shapeForm) => {
         return Object.entries(shapeForm).every(([key, value]) => {
-          if (value.constructor === Object) {
-            return shapeCheck(checkedValue[key], shapeForm[key])
-          }
-
+          // if (value.constructor === Object) {
+          //   return shapeCheck(checkedValue[key], shapeForm[key])
+          // }
           return value.isValid(checkedValue[key]);
         })
       }
@@ -82,25 +86,50 @@ class HashValidator extends BasicValidator {
     }
 
     this.requiredCalled = true;
-    return this.addValidator(shapeCheck);
+    return this.addDefaultValidator(shapeCheck);
   }
 }
 
+const validatorClassesMapping = {
+  string: StringValidator,
+  number: NumberValidator,
+  array: ArrayValidator,
+  hash: HashValidator,
+}
+
 export default class Validator {
+  constructor() {
+    Object.keys(validatorClassesMapping).forEach((key) => {
+      this[`type${key}`] = {customValidators: {}};
+    })
+  }
+
+  addValidator(type, name, fn) {
+    this[`type${type}`].customValidators[name] = fn;
+  }
+
   string() {
-    return new StringValidator();
+    const validator = new StringValidator();
+    validator.testValidationFuncs = this['typestring'].customValidators;
+    return validator;
   }
 
   number() {
-    return new NumberValidator();
+    const validator = new NumberValidator();
+    validator.testValidationFuncs = this['typenumber'].customValidators;
+    return validator;
   }
 
   array() {
-    return new ArrayValidator();
+    const validator = new ArrayValidator();
+    validator.testValidationFuncs = this['typearray'].customValidators;
+    return validator;
   }
 
   object() {
-    return new HashValidator();
+    const validator = new HashValidator();
+    validator.testValidationFuncs = this['typehash'].customValidators;
+    return validator;
   }
 }
 
